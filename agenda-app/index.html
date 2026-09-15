@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Cuaderno — Agenda</title>
+
+<!-- PWA: instalable, standalone, tema blanco -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- iOS (Safari no lee el manifest para esto) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Cuaderno">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+
+<!-- Tipografías: serif editorial + manuscrita para notas -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Karla:ital,wght@0,400;0,500;0,700;1,400&family=Caveat:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     SISTEMA DE DISEÑO — "Cuaderno moderno"
+     Blanco puro · líneas capilares · un solo acento (rojo margen)
+     ============================================================ */
+  :root {
+    --papel:        #ffffff;
+    --tinta:        #16161a;
+    --tinta-suave:  #6f6f76;
+    --linea:        #e4e4e7;   /* hairline gris */
+    --linea-fuerte: #16161a;   /* hairline negra */
+    --renglon:      #f0f0f2;   /* rayado del papel */
+    --margen-rojo:  #e8574b;   /* línea de margen clásica */
+
+    --serif:  "Instrument Serif", Georgia, serif;
+    --sans:   "Karla", -apple-system, sans-serif;
+    --mano:   "Caveat", cursive;
+
+    --radio: 2px;              /* esquinas casi rectas = papel */
+    --toque: 48px;             /* área táctil mínima (pulgar) */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.45;
+    background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.018) 1px, transparent 0);
+    background-size: 6px 6px;
+    padding-bottom: 96px;
+  }
+
+  /* ============ CABECERA ============ */
+  header {
+    padding: max(20px, env(safe-area-inset-top)) 20px 0;
+    border-bottom: 1px solid var(--linea-fuerte);
+    background: var(--papel);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .cabecera-fila {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(2rem, 8vw, 2.6rem);
+    letter-spacing: -0.01em;
+  }
+  h1 em { font-style: italic; color: var(--tinta-suave); }
+
+  .cabecera-derecha {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .mes {
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    white-space: nowrap;
+  }
+  .reloj {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    color: var(--tinta);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Selector de semana: flechas + pastillas deslizables */
+  .semana-zona {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    padding: 14px 0 16px;
+  }
+  .sem-flecha {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: var(--toque);
+    border: 1px solid var(--linea);
+    border-radius: var(--radio);
+    background: var(--papel);
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    color: var(--tinta);
+    cursor: pointer;
+  }
+  .sem-flecha:active { border-color: var(--linea-fuerte); }
+
+  .semana-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+  }
+  .semana-nav::-webkit-scrollbar { display: none; }
+
+  .dia-pastilla {
+    flex: 1 0 auto;
+    min-width: 52px;
+    min-height: var(--toque);
+    border: 1px solid var(--linea);
+    border-radius: var(--radio);
+    background: var(--papel);
+    font-family: var(--sans);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 6px 8px;
+    color: var(--tinta);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  .dia-pastilla span:first-child {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--tinta-suave);
+  }
+  .dia-pastilla span:last-child {
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+  .dia-pastilla.activo {
+    border-color: var(--linea-fuerte);
+    box-shadow: inset 0 -3px 0 var(--linea-fuerte);
+  }
+  /* punto rojo bajo el día de HOY en la tira semanal */
+  .dia-pastilla.es-hoy span:last-child { position: relative; }
+  .dia-pastilla.es-hoy span:last-child::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--margen-rojo);
+  }
+
+  /* ============ CUADRÍCULA DE DÍAS ============ */
+  main {
+    padding: 20px 16px 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  @media (min-width: 560px) {
+    main { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ---- La hoja de cada día ---- */
+  .dia-hoja {
+    border: 1px solid var(--linea-fuerte);
+    border-radius: var(--radio);
+    background: var(--papel);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      2px 2px 0 var(--papel),
+      3px 3px 0 var(--linea);
+    scroll-margin-top: 150px; /* al saltar desde las pastillas, no quedar bajo la cabecera */
+  }
+
+  /* Resaltado sutil del día de hoy: sombra más firme,
+     fondo apenas cálido y filo rojo superior */
+  .dia-hoja.hoy {
+    box-shadow:
+      3px 3px 0 var(--papel),
+      4px 4px 0 var(--linea-fuerte);
+    background: #fffdfb;
+  }
+  .dia-hoja.hoy .dia-encabezado {
+    box-shadow: inset 0 2px 0 var(--margen-rojo);
+  }
+
+  .dia-encabezado {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--linea-fuerte);
+    gap: 8px;
+  }
+
+  .dia-fecha {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .dia-numero {
+    font-family: var(--serif);
+    font-size: 2rem;
+    line-height: 1;
+  }
+  .dia-nombre {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--tinta-suave);
+  }
+  .etiqueta-hoy {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border: 1px solid var(--tinta);
+    padding: 3px 8px;
+    border-radius: 99px;
+  }
+
+  /* ---- Zona de papel rayado con margen rojo ---- */
+  .dia-papel {
+    position: relative;
+    flex: 1;
+    padding: 4px 14px 8px 30px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 35px,
+      var(--renglon) 35px,
+      var(--renglon) 36px
+    );
+  }
+  .dia-papel::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 20px;
+    width: 1px;
+    background: var(--margen-rojo);
+    opacity: 0.55;
+  }
+
+  /* ---- Tarea ---- */
+  .tarea {
+    padding: 8px 0 10px;
+    border-bottom: 1px dashed var(--linea);
+  }
+  .tarea:last-of-type { border-bottom: none; }
+
+  .tarea-fila {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--toque);
+  }
+
+  .tarea-check {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border: 1.5px solid var(--tinta);
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    display: grid;
+    place-content: center;
+    background: var(--papel);
+    transition: background 0.15s ease;
+  }
+  .tarea-check::after {
+    content: "✓";
+    font-size: 15px;
+    color: var(--papel);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.12s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tarea-check:checked { background: var(--tinta); }
+  .tarea-check:checked::after { opacity: 1; transform: scale(1); }
+
+  .tarea-texto {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--tinta);
+    min-height: var(--toque);
+    outline: none;
+  }
+  .tarea-texto::placeholder { color: var(--tinta-suave); font-weight: 400; }
+
+  .tarea.hecha .tarea-texto {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    color: var(--tinta-suave);
+  }
+
+  /* ---- Hora de la tarea: chip discreto ---- */
+  .tarea-hora {
+    flex: 0 0 auto;
+    border: 1px solid var(--linea);
+    border-radius: 99px;
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--tinta-suave);
+    padding: 4px 8px;
+    min-height: 32px;
+    outline: none;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .tarea-hora:focus { border-color: var(--margen-rojo); }
+  .tarea-hora::-webkit-calendar-picker-indicator { display: none; }
+  /* cuando la tarea ya tiene hora, el chip toma tinta */
+  .tarea-hora.con-hora { color: var(--tinta); border-color: var(--tinta); }
+
+  /* ---- Borrar tarea ---- */
+  .tarea-borrar {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    color: var(--linea);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: color 0.15s ease;
+  }
+  .tarea-borrar:hover, .tarea-borrar:active { color: var(--margen-rojo); }
+
+  /* ---- Notas extras: campo discreto, manuscrito ---- */
+  .tarea-nota {
+    display: block;
+    width: 100%;
+    border: none;
+    border-bottom: 1px dotted var(--linea);
+    background: transparent;
+    font-family: var(--mano);
+    font-size: 1.05rem;
+    color: var(--tinta-suave);
+    padding: 2px 0 6px 38px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .tarea-nota::placeholder { color: #c2c2c8; }
+  .tarea-nota:focus { border-bottom-color: var(--margen-rojo); }
+
+  /* ---- Sincronizar con calendario: enlace discreto por tarea ---- */
+  .tarea-calendario {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 38px;
+    min-height: 40px;
+    border: none;
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    cursor: pointer;
+    padding: 0 6px 0 0;
+    transition: color 0.15s ease;
+  }
+  .tarea-calendario .flecha {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+  .tarea-calendario:hover, .tarea-calendario:active { color: var(--tinta); }
+
+  /* ---- Botón agregar tarea ---- */
+  .agregar-tarea {
+    width: 100%;
+    min-height: var(--toque);
+    margin: 6px 0 4px;
+    border: 1px dashed var(--tinta-suave);
+    border-radius: var(--radio);
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .agregar-tarea:active {
+    color: var(--tinta);
+    border-color: var(--tinta);
+  }
+  .agregar-tarea .mas {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+
+  .dia-vacio {
+    font-family: var(--mano);
+    font-size: 1.1rem;
+    color: #c2c2c8;
+    padding: 14px 0 6px;
+  }
+
+  /* Aviso si el navegador bloquea localStorage */
+  .aviso-storage {
+    display: none;
+    margin: 12px 16px 0;
+    padding: 10px 14px;
+    border: 1px solid var(--margen-rojo);
+    border-radius: var(--radio);
+    font-size: 0.82rem;
+    color: var(--tinta-suave);
+    max-width: 720px;
+  }
+  .aviso-storage.visible { display: block; }
+
+  /* ============ BARRA INFERIOR ============ */
+  .barra-inferior {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--papel);
+    border-top: 1px solid var(--linea-fuerte);
+    display: flex;
+    align-items: stretch;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 10;
+  }
+  .barra-inferior button {
+    flex: 1;
+    min-height: 60px;
+    border: none;
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+  .barra-inferior button + button { border-left: 1px solid var(--linea); }
+  .barra-inferior button.activo { color: var(--tinta); }
+  .barra-inferior .icono {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  @keyframes aparecer {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .dia-hoja { animation: aparecer 0.4s ease both; }
+  .dia-hoja:nth-child(2) { animation-delay: 0.05s; }
+  .dia-hoja:nth-child(3) { animation-delay: 0.10s; }
+  .dia-hoja:nth-child(4) { animation-delay: 0.15s; }
+  .dia-hoja:nth-child(5) { animation-delay: 0.20s; }
+  .dia-hoja:nth-child(6) { animation-delay: 0.25s; }
+  .dia-hoja:nth-child(7) { animation-delay: 0.30s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dia-hoja { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="cabecera-fila">
+    <h1>Mi <em>cuaderno</em></h1>
+    <div class="cabecera-derecha">
+      <span class="mes" id="etiqueta-mes"></span>
+      <span class="reloj" id="reloj"></span>
+    </div>
+  </div>
+
+  <div class="semana-zona">
+    <button class="sem-flecha" id="sem-anterior" aria-label="Semana anterior">‹</button>
+    <nav class="semana-nav" id="semana-nav" aria-label="Días de la semana"></nav>
+    <button class="sem-flecha" id="sem-siguiente" aria-label="Semana siguiente">›</button>
+  </div>
+</header>
+
+<p class="aviso-storage" id="aviso-storage">
+  Tu navegador está bloqueando el guardado local: las tareas funcionarán,
+  pero se perderán al recargar la página.
+</p>
+
+<main id="cuadricula"></main>
+
+<nav class="barra-inferior" aria-label="Navegación principal">
+  <button class="activo" id="btn-semana"><span class="icono">☰</span> Semana</button>
+  <button id="btn-hoy"><span class="icono">◎</span> Hoy</button>
+  <button id="btn-avisos" title="Activar recordatorios"><span class="icono">◷</span> Avisos</button>
+  <button id="btn-notas" title="Próximamente"><span class="icono">✎</span> Notas</button>
+</nav>
+
+<!-- Plantilla de una tarea (los valores se asignan por JS, nunca por HTML) -->
+<template id="tpl-tarea">
+  <div class="tarea">
+    <div class="tarea-fila">
+      <input type="checkbox" class="tarea-check" aria-label="Completar tarea">
+      <input type="text" class="tarea-texto" placeholder="Nueva tarea…">
+      <input type="time" class="tarea-hora" aria-label="Hora de la tarea">
+      <button class="tarea-borrar" aria-label="Borrar tarea">×</button>
+    </div>
+    <input type="text" class="tarea-nota" placeholder="notas extras…">
+    <button class="tarea-calendario"><span class="flecha">↗</span> Sincronizar con calendario</button>
+  </div>
+</template>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     FASE 2 · Lógica
+     - Reloj y fecha reales del sistema (resalta el día de hoy)
+     - Guardado local con localStorage (sin internet ni BD)
+     - Tareas con fecha (el día donde se crean), hora y notas
+     ============================================================ */
+
+  const CLAVE = "cuaderno.tareas.v1";
+
+  const DIAS_LARGO  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const DIAS_CORTO  = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  const MESES_LARGO = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                       "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+  /* ---------- Estado ---------- */
+  // datos = { "2026-09-15": [ {id, texto, hora, nota, hecha}, ... ], ... }
+  let datos = {};
+  let semanaOffset = 0;          // 0 = semana actual, -1 anterior, +1 siguiente
+  let hoyISO = fechaISO(new Date());
+
+  /* ---------- Guardado local ---------- */
+  let storageOk = true;
+  try {
+    localStorage.setItem(CLAVE + ".test", "1");
+    localStorage.removeItem(CLAVE + ".test");
+  } catch (e) {
+    storageOk = false;
+    document.getElementById("aviso-storage").classList.add("visible");
+  }
+
+  function cargar() {
+    if (!storageOk) return;
+    try {
+      const crudo = localStorage.getItem(CLAVE);
+      if (crudo) datos = JSON.parse(crudo) || {};
+    } catch (e) { datos = {}; }
+  }
+
+  function guardar() {
+    if (!storageOk) return;
+    try {
+      localStorage.setItem(CLAVE, JSON.stringify(datos));
+    } catch (e) { /* almacenamiento lleno o bloqueado: la UI sigue viva */ }
+  }
+
+  /* ---------- Utilidades de fecha ---------- */
+  function fechaISO(d) {
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + dia;
+  }
+
+  // Lunes de la semana actual + desplazamiento de semanas
+  function lunesDeSemana(offset) {
+    const ahora = new Date();
+    const d = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const diaSemana = (d.getDay() + 6) % 7;   // 0 = lunes … 6 = domingo
+    d.setDate(d.getDate() - diaSemana + offset * 7);
+    return d;
+  }
+
+  function diasDeSemana(offset) {
+    const lunes = lunesDeSemana(offset);
+    const dias = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(lunes);
+      d.setDate(lunes.getDate() + i);
+      dias.push(d);
+    }
+    return dias;
+  }
+
+  /* ---------- Tareas ---------- */
+  function tareasDe(iso) {
+    return datos[iso] || [];
+  }
+
+  function nuevaTarea(iso) {
+    const t = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      texto: "",
+      hora: "",
+      nota: "",
+      hecha: false
+    };
+    if (!datos[iso]) datos[iso] = [];
+    datos[iso].push(t);
+    guardar();
+    return t;
+  }
+
+  function borrarTarea(iso, id) {
+    if (!datos[iso]) return;
+    datos[iso] = datos[iso].filter(t => t.id !== id);
+    if (datos[iso].length === 0) delete datos[iso];
+    guardar();
+  }
+
+  function buscarTarea(iso, id) {
+    return (datos[iso] || []).find(t => t.id === id);
+  }
+
+  // Las tareas con hora van primero, ordenadas; las sin hora conservan su orden
+  function ordenadas(iso) {
+    const lista = tareasDe(iso).slice();
+    return lista.sort((a, b) => {
+      if (a.hora && b.hora) return a.hora.localeCompare(b.hora);
+      if (a.hora) return -1;
+      if (b.hora) return 1;
+      return 0;
+    });
+  }
+
+  /* ---------- Render ---------- */
+  const $cuadricula = document.getElementById("cuadricula");
+  const $semanaNav  = document.getElementById("semana-nav");
+  const $mes        = document.getElementById("etiqueta-mes");
+  const tplTarea    = document.getElementById("tpl-tarea");
+
+  function etiquetaMes(dias) {
+    const a = dias[0], b = dias[6];
+    if (a.getMonth() === b.getMonth()) {
+      return MESES_LARGO[a.getMonth()] + " " + a.getFullYear();
+    }
+    const anio = a.getFullYear() === b.getFullYear()
+      ? a.getFullYear()
+      : a.getFullYear() + "/" + String(b.getFullYear()).slice(2);
+    return MESES_CORTO[a.getMonth()] + " – " + MESES_CORTO[b.getMonth()] + " " + anio;
+  }
+
+  function crearNodoTarea(iso, tarea) {
+    const nodo = tplTarea.content.firstElementChild.cloneNode(true);
+    nodo.dataset.id = tarea.id;
+    nodo.dataset.iso = iso;
+    nodo.classList.toggle("hecha", tarea.hecha);
+    nodo.querySelector(".tarea-check").checked = tarea.hecha;
+    nodo.querySelector(".tarea-texto").value = tarea.texto;
+    const $hora = nodo.querySelector(".tarea-hora");
+    $hora.value = tarea.hora;
+    $hora.classList.toggle("con-hora", !!tarea.hora);
+    nodo.querySelector(".tarea-nota").value = tarea.nota;
+    return nodo;
+  }
+
+  function renderDia(iso, fecha, esHoy) {
+    const hoja = document.createElement("section");
+    hoja.className = "dia-hoja" + (esHoy ? " hoy" : "");
+    hoja.dataset.iso = iso;
+    hoja.id = "dia-" + iso;
+
+    const enc = document.createElement("div");
+    enc.className = "dia-encabezado";
+    const fechaDiv = document.createElement("div");
+    fechaDiv.className = "dia-fecha";
+    const num = document.createElement("span");
+    num.className = "dia-numero";
+    num.textContent = fecha.getDate();
+    const nom = document.createElement("span");
+    nom.className = "dia-nombre";
+    nom.textContent = DIAS_LARGO[fecha.getDay()];
+    fechaDiv.append(num, nom);
+    enc.append(fechaDiv);
+    if (esHoy) {
+      const et = document.createElement("span");
+      et.className = "etiqueta-hoy";
+      et.textContent = "Hoy";
+      enc.append(et);
+    }
+
+    const papel = document.createElement("div");
+    papel.className = "dia-papel";
+
+    const lista = ordenadas(iso);
+    if (lista.length === 0) {
+      const vacio = document.createElement("p");
+      vacio.className = "dia-vacio";
+      vacio.textContent = "Nada anotado todavía…";
+      papel.append(vacio);
+    } else {
+      lista.forEach(t => papel.append(crearNodoTarea(iso, t)));
+    }
+
+    const btn = document.createElement("button");
+    btn.className = "agregar-tarea";
+    btn.innerHTML = '<span class="mas">+</span> Agregar tarea';
+    papel.append(btn);
+
+    hoja.append(enc, papel);
+    return hoja;
+  }
+
+  function renderSemana() {
+    const dias = diasDeSemana(semanaOffset);
+    $mes.textContent = etiquetaMes(dias);
+
+    // Pastillas
+    $semanaNav.innerHTML = "";
+    dias.forEach(d => {
+      const iso = fechaISO(d);
+      const p = document.createElement("button");
+      p.className = "dia-pastilla" + (iso === hoyISO ? " es-hoy" : "");
+      p.dataset.iso = iso;
+      const s1 = document.createElement("span");
+      s1.textContent = DIAS_CORTO[d.getDay()];
+      const s2 = document.createElement("span");
+      s2.textContent = d.getDate();
+      p.append(s1, s2);
+      $semanaNav.append(p);
+    });
+
+    // Hojas
+    $cuadricula.innerHTML = "";
+    dias.forEach(d => {
+      const iso = fechaISO(d);
+      $cuadricula.append(renderDia(iso, d, iso === hoyISO));
+    });
+  }
+
+  // Re-dibuja solo la hoja de un día (para borrar u ordenar por hora)
+  function refrescarDia(iso) {
+    const vieja = document.getElementById("dia-" + iso);
+    if (!vieja) return;
+    const [a, m, d] = iso.split("-").map(Number);
+    const fecha = new Date(a, m - 1, d);
+    const nueva = renderDia(iso, fecha, iso === hoyISO);
+    nueva.style.animation = "none";
+    vieja.replaceWith(nueva);
+  }
+
+  /* ---------- Reloj ---------- */
+  const $reloj = document.getElementById("reloj");
+
+  function latido() {
+    const ahora = new Date();
+    const hh = String(ahora.getHours()).padStart(2, "0");
+    const mm = String(ahora.getMinutes()).padStart(2, "0");
+    $reloj.textContent =
+      DIAS_CORTO[ahora.getDay()] + " " + ahora.getDate() + " · " + hh + ":" + mm;
+
+    // Si pasó la medianoche, el "hoy" cambia y se re-dibuja todo
+    const iso = fechaISO(ahora);
+    if (iso !== hoyISO) {
+      hoyISO = iso;
+      renderSemana();
+    }
+  }
+
+  /* ---------- Utilidad: fecha + hora → Date ---------- */
+  function fechaHoraDe(iso, hora) {
+    const [a, m, d] = iso.split("-").map(Number);
+    const [hh, mm] = (hora || "00:00").split(":").map(Number);
+    return new Date(a, m - 1, d, hh, mm);
+  }
+
+  function horaLegible(hora) {
+    const [hh, mm] = hora.split(":").map(Number);
+    const ap = hh >= 12 ? "p. m." : "a. m.";
+    const h12 = hh % 12 || 12;
+    return h12 + ":" + String(mm).padStart(2, "0") + " " + ap;
+  }
+
+  function avisar(msg) {
+    const el = document.getElementById("aviso-storage");
+    el.textContent = msg;
+    el.classList.add("visible");
+  }
+
+  /* ============================================================
+     RECORDATORIOS · API de Notificaciones
+     - El navegador de Android exige un service worker para mostrar
+       notificaciones; en PC basta con `new Notification`.
+       `notificar()` intenta primero el SW y cae al constructor.
+     - `revisarRecordatorios()` corre cada 20 s (setInterval) y
+       dispara un aviso 1 día antes y otro 1 hora antes de cada
+       tarea con hora. Cada aviso se marca en la tarea (y se
+       guarda) para no repetirse al recargar.
+     ============================================================ */
+  let regSW = null;
+
+  function notificar(titulo, cuerpo, tag) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const opciones = { body: cuerpo, tag: tag, icon: undefined };
+    if (regSW) {
+      try { regSW.showNotification(titulo, opciones); return; } catch (e) {}
+    }
+    try { new Notification(titulo, opciones); } catch (e) { /* Android sin SW */ }
+  }
+
+  const MS_DIA = 24 * 60 * 60 * 1000;
+  const MS_HORA = 60 * 60 * 1000;
+
+  function revisarRecordatorios() {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const ahora = Date.now();
+    let cambio = false;
+
+    Object.keys(datos).forEach(iso => {
+      datos[iso].forEach(t => {
+        if (!t.hora || t.hecha) return;                 // solo tareas con hora, pendientes
+        const limite = fechaHoraDe(iso, t.hora).getTime();
+        if (limite <= ahora) return;                    // ya venció: no molestar
+        if (!t.avisos) t.avisos = {};
+
+        // "hoy" o "mañana" según el día en que vence
+        const cuando = fechaISO(new Date(limite)) === hoyISO ? "hoy" : "mañana";
+        const nombre = t.texto || "Tarea sin título";
+        const cola = t.nota ? " · " + t.nota : "";
+
+        if (!t.avisos.hora && ahora >= limite - MS_HORA) {
+          notificar("⏱ En 1 hora · " + nombre,
+                    "Vence " + cuando + " a las " + horaLegible(t.hora) + cola,
+                    t.id + "-1h");
+          t.avisos.hora = true;
+          t.avisos.dia = true;      // ya no tiene sentido el aviso de 1 día
+          cambio = true;
+        } else if (!t.avisos.dia && ahora >= limite - MS_DIA) {
+          notificar("📌 " + (cuando === "hoy" ? "Hoy" : "Mañana") + " · " + nombre,
+                    "Vence a las " + horaLegible(t.hora) + cola,
+                    t.id + "-1d");
+          t.avisos.dia = true;
+          cambio = true;
+        }
+      });
+    });
+
+    if (cambio) guardar();
+  }
+
+  /* Botón "Avisos": pedir permiso de notificaciones (requiere gesto del usuario) */
+  const $btnAvisos = document.getElementById("btn-avisos");
+
+  function pintarBotonAvisos() {
+    const ok = "Notification" in window && Notification.permission === "granted";
+    $btnAvisos.classList.toggle("activo", ok);
+  }
+
+  $btnAvisos.addEventListener("click", () => {
+    if (!("Notification" in window)) {
+      avisar("Este navegador no soporta notificaciones.");
+      return;
+    }
+    if (Notification.permission === "granted") {
+      notificar("Recordatorios activos", "Te avisaré 1 día y 1 hora antes de cada tarea con hora.", "estado");
+      return;
+    }
+    Notification.requestPermission().then(r => {
+      pintarBotonAvisos();
+      if (r === "granted") {
+        notificar("Recordatorios activados",
+                  "Te avisaré 1 día y 1 hora antes de cada tarea con hora.", "estado");
+        revisarRecordatorios();
+      } else {
+        avisar("Las notificaciones quedaron bloqueadas. Actívalas en los permisos del sitio (candado junto a la dirección).");
+      }
+    });
+  });
+
+  /* ============================================================
+     CALENDARIO NATIVO · archivo .ics (iCalendar)
+     Al tocar "Sincronizar con calendario" se genera y descarga un
+     .ics con la tarea; el celular lo abre con su app de Calendario
+     y el evento llega pre-llenado, con las mismas dos alarmas
+     (-1 día y -1 hora). Funciona en Android, iPhone y PC,
+     sin internet. (Se eligió .ics sobre intent:// porque intent://
+     solo existe en Chrome de Android y su soporte es frágil.)
+     ============================================================ */
+  function escaparICS(s) {
+    return String(s)
+      .replace(/\\/g, "\\\\")
+      .replace(/;/g, "\\;")
+      .replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+
+  // Date → "20260915T173000" (hora local del dispositivo)
+  function compactaLocal(d) {
+    return d.getFullYear()
+      + String(d.getMonth() + 1).padStart(2, "0")
+      + String(d.getDate()).padStart(2, "0")
+      + "T"
+      + String(d.getHours()).padStart(2, "0")
+      + String(d.getMinutes()).padStart(2, "0")
+      + "00";
+  }
+
+  function icsDeTarea(iso, t) {
+    const sello = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    const lineas = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Mi Cuaderno//Agenda//ES",
+      "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      "UID:" + t.id + "@mi-cuaderno",
+      "DTSTAMP:" + sello
+    ];
+
+    if (t.hora) {
+      const inicio = fechaHoraDe(iso, t.hora);
+      const fin = new Date(inicio.getTime() + MS_HORA);   // evento de 1 hora
+      lineas.push("DTSTART:" + compactaLocal(inicio));
+      lineas.push("DTEND:" + compactaLocal(fin));
+    } else {
+      // sin hora: evento de día completo
+      const [a, m, d] = iso.split("-").map(Number);
+      const sig = new Date(a, m - 1, d + 1);
+      lineas.push("DTSTART;VALUE=DATE:" + iso.replace(/-/g, ""));
+      lineas.push("DTEND;VALUE=DATE:" + compactaLocal(sig).slice(0, 8));
+    }
+
+    lineas.push("SUMMARY:" + escaparICS(t.texto || "Tarea"));
+    if (t.nota) lineas.push("DESCRIPTION:" + escaparICS(t.nota));
+
+    // Mismas alarmas que la app: 1 día y 1 hora antes
+    lineas.push(
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Recordatorio", "TRIGGER:-P1D", "END:VALARM",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Recordatorio", "TRIGGER:-PT1H", "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    );
+    return lineas.join("\r\n");
+  }
+
+  function descargarICS(iso, t) {
+    if (!t) return;
+    const blob = new Blob([icsDeTarea(iso, t)], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const nombre = (t.texto || "tarea").slice(0, 40).replace(/[\\/:*?"<>|]/g, "").trim() || "tarea";
+    a.href = url;
+    a.download = nombre + ".ics";
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /* ---------- Eventos (delegados) ---------- */
+
+  // Agregar tarea
+  $cuadricula.addEventListener("click", e => {
+    const btnAgregar = e.target.closest(".agregar-tarea");
+    if (btnAgregar) {
+      const hoja = btnAgregar.closest(".dia-hoja");
+      const iso = hoja.dataset.iso;
+      const tarea = nuevaTarea(iso);
+      const papel = btnAgregar.closest(".dia-papel");
+      const vacio = papel.querySelector(".dia-vacio");
+      if (vacio) vacio.remove();
+      const nodo = crearNodoTarea(iso, tarea);
+      papel.insertBefore(nodo, btnAgregar);
+      nodo.querySelector(".tarea-texto").focus();
+      return;
+    }
+
+    const btnBorrar = e.target.closest(".tarea-borrar");
+    if (btnBorrar) {
+      const nodo = btnBorrar.closest(".tarea");
+      borrarTarea(nodo.dataset.iso, nodo.dataset.id);
+      refrescarDia(nodo.dataset.iso);
+      return;
+    }
+
+    // Sincronizar con el calendario nativo (.ics)
+    const btnCal = e.target.closest(".tarea-calendario");
+    if (btnCal) {
+      const nodo = btnCal.closest(".tarea");
+      descargarICS(nodo.dataset.iso, buscarTarea(nodo.dataset.iso, nodo.dataset.id));
+    }
+  });
+
+  // Texto y notas: se guardan mientras se escribe
+  $cuadricula.addEventListener("input", e => {
+    const nodo = e.target.closest(".tarea");
+    if (!nodo) return;
+    const tarea = buscarTarea(nodo.dataset.iso, nodo.dataset.id);
+    if (!tarea) return;
+
+    if (e.target.classList.contains("tarea-texto")) tarea.texto = e.target.value;
+    if (e.target.classList.contains("tarea-nota"))  tarea.nota  = e.target.value;
+    guardar();
+  });
+
+  // Checkbox y hora: al cambiar
+  $cuadricula.addEventListener("change", e => {
+    const nodo = e.target.closest(".tarea");
+    if (!nodo) return;
+    const iso = nodo.dataset.iso;
+    const tarea = buscarTarea(iso, nodo.dataset.id);
+    if (!tarea) return;
+
+    if (e.target.classList.contains("tarea-check")) {
+      tarea.hecha = e.target.checked;
+      nodo.classList.toggle("hecha", tarea.hecha);
+      guardar();
+    }
+    if (e.target.classList.contains("tarea-hora")) {
+      tarea.hora = e.target.value;
+      tarea.avisos = {};        // hora nueva → recordatorios de cero
+      guardar();
+      refrescarDia(iso);   // re-ordena el día por hora
+    }
+  });
+
+  // Pastillas de la semana: saltar a la hoja de ese día
+  $semanaNav.addEventListener("click", e => {
+    const p = e.target.closest(".dia-pastilla");
+    if (!p) return;
+    document.querySelector(".dia-pastilla.activo")?.classList.remove("activo");
+    p.classList.add("activo");
+    document.getElementById("dia-" + p.dataset.iso)?.scrollIntoView({ block: "start" });
+  });
+
+  // Flechas de semana
+  document.getElementById("sem-anterior").addEventListener("click", () => {
+    semanaOffset--; renderSemana();
+  });
+  document.getElementById("sem-siguiente").addEventListener("click", () => {
+    semanaOffset++; renderSemana();
+  });
+
+  // Barra inferior
+  document.getElementById("btn-semana").addEventListener("click", () => {
+    window.scrollTo({ top: 0 });
+  });
+  document.getElementById("btn-hoy").addEventListener("click", () => {
+    if (semanaOffset !== 0) { semanaOffset = 0; renderSemana(); }
+    document.getElementById("dia-" + hoyISO)?.scrollIntoView({ block: "start" });
+  });
+  // "Notas" queda como sección visual para una fase futura
+
+  /* ---------- Arranque ---------- */
+  // Service worker: da el modo offline (cachea la app completa) y
+  // las notificaciones en Android. Requiere https o localhost; si
+  // falla (p. ej. file://), la app sigue funcionando con red.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(r => { regSW = r; })
+      .catch(() => {});
+  }
+
+  cargar();
+  renderSemana();
+  pintarBotonAvisos();
+  latido();
+  revisarRecordatorios();
+  setInterval(latido, 15000);                 // reloj vivo y cambio de día a medianoche
+  setInterval(revisarRecordatorios, 20000);   // vigilancia constante de la hora
+})();
+</script>
+
+</body>
+</html>
